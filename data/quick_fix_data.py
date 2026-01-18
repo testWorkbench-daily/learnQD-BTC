@@ -171,6 +171,10 @@ def clean_btc_data(input_path, output_path):
     print("\n步骤6: 保存清理后的数据...")
     
     output_df = df[['ts_event', 'open', 'high', 'low', 'close', 'volume']].copy()
+    
+    # 去除时区信息以兼容 backtrader
+    output_df['ts_event'] = pd.to_datetime(output_df['ts_event']).dt.tz_localize(None)
+    
     output_df.to_csv(output_path, index=False)
     
     print(f"\n清理后数据已保存到: {output_path}")
@@ -348,6 +352,10 @@ def quick_clean_data(input_path, output_path):
     print("\n步骤4: 保存清理后的数据...")
     
     output_df = df[['ts_event', 'open', 'high', 'low', 'close', 'volume']].copy()
+    
+    # 去除时区信息以兼容 backtrader
+    output_df['ts_event'] = pd.to_datetime(output_df['ts_event']).dt.tz_localize(None)
+    
     output_df.to_csv(output_path, index=False)
     
     print(f"\n清理后数据已保存到: {output_path}")
