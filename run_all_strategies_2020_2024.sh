@@ -1,25 +1,19 @@
 #!/bin/bash
-# 滚动窗口回测脚本
-# 对所有策略进行 6 个月滚动窗口回测（每月滚动一次）
-# 时间范围: 2017-01-01 到 2025-12-31
+# 批量运行所有策略回测 (2020-2024完整历史周期)
+# 按策略类型使用合适的timeframe，支持并发执行
 # 用法: bash run_all_strategies_2020_2024.sh
 
 # ============================================================================
 # 配置参数
 # ============================================================================
-WINDOW_START_DATE="2017-01-01"
-WINDOW_END_DATE="2025-12-31"
-WINDOW_MONTHS=6           # 6 个月的投资窗口
-ROLLING_MONTHS=1          # 每月滚动一次
-PARALLEL_JOBS=4           # 并发执行数量
+START="2017-01-01"
+END="2025-12-31"
+PARALLEL_JOBS=4  # 并发执行数量
 TIMEFRAMES=("m1" "m5" "m15" "h1" "h4" "d1")  # 所有时间框架
 
 echo "================================================================"
-echo "滚动窗口回测 - 所有策略和时间框架"
-echo "================================================================"
-echo "数据范围: $WINDOW_START_DATE 至 $WINDOW_END_DATE"
-echo "窗口大小: $WINDOW_MONTHS 个月"
-echo "滚动步长: $ROLLING_MONTHS 个月"
+echo "批量运行策略回测（完整历史周期 - 多时间框架）"
+echo "时间范围: $START 至 $END"
 echo "时间框架: ${TIMEFRAMES[@]}"
 echo "并发数量: $PARALLEL_JOBS"
 echo "================================================================"
@@ -28,43 +22,10 @@ echo ""
 # 创建结果目录
 mkdir -p backtest_results
 
-# 生成所有滚动窗口的日期对
-generate_rolling_windows() {
-    local start_date=$1
-    local end_date=$2
-    local window_months=$3
-    local rolling_months=$4
-
-    # 转换为时间戳便于计算
-    local current_date=$(date -j -f "%Y-%m-%d" "$start_date" "+%s" 2>/dev/null || date -d "$start_date" "+%s")
-    local max_date=$(date -j -f "%Y-%m-%d" "$end_date" "+%s" 2>/dev/null || date -d "$end_date" "+%s")
-
-    while [ $current_date -lt $max_date ]; do
-        # 计算窗口结束日期
-        local window_end_ts=$(date -j -v +${window_months}m -f "%s" "$current_date" "+%s" 2>/dev/null || date -d "$current_date +${window_months} months" "+%s")
-
-        # 如果窗口结束超过最大日期，调整为最大日期
-        if [ $window_end_ts -gt $max_date ]; then
-            window_end_ts=$max_date
-        fi
-
-        # 转换回日期格式
-        local start_fmt=$(date -j -f "%s" "$current_date" "+%Y-%m-%d" 2>/dev/null || date -d "@$current_date" "+%Y-%m-%d")
-        local end_fmt=$(date -j -f "%s" "$window_end_ts" "+%Y-%m-%d" 2>/dev/null || date -d "@$window_end_ts" "+%Y-%m-%d")
-
-        echo "$start_fmt $end_fmt"
-
-        # 移动到下一个窗口
-        current_date=$(date -j -v +${rolling_months}m -f "%s" "$current_date" "+%s" 2>/dev/null || date -d "$current_date +${rolling_months} months" "+%s")
-    done
-}
-
 # 并发控制函数
 run_with_limit() {
     local timeframe=$1
     local strategy=$2
-    local window_start=$3
-    local window_end=$4
 
     # 等待直到有可用的并发槽位
     while [ $(jobs -r | wc -l) -ge $PARALLEL_JOBS ]; do
@@ -72,11 +33,27 @@ run_with_limit() {
     done
 
     # 后台运行策略
-    python bt_main.py --start "$window_start" --end "$window_end" --timeframe "$timeframe" --atom "$strategy" --no-plot &
+    python bt_main.py --start $START --end $END --timeframe $timeframe --atom $strategy --no-plot &
+}
+
+# 为一个策略列表运行所有时间框架
+run_strategies_all_timeframes() {
+    local category_name=$1
+    shift
+    local strategies=("$@")
+
+    echo ">>> 运行 $category_name (所有时间框架: ${TIMEFRAMES[@]})"
+
+    for timeframe in "${TIMEFRAMES[@]}"; do
+        echo "  → 时间框架: $timeframe"
+        for strategy in "${strategies[@]}"; do
+            run_with_limit "$timeframe" "$strategy"
+        done
+    done
 }
 
 # ============================================================================
-# 所有策略定义
+# 1. 日内策略 (30个 - 所有时间框架)
 # ============================================================================
 
 INTRADAY=(
@@ -87,6 +64,16 @@ INTRADAY=(
     "vwap_reversion" "vwap_rev_1_0" "vwap_rev_1_5" "vwap_rev_2_0" "vwap_rev_aggressive" "vwap_rev_conservative"
 )
 
+run_strategies_all_timeframes "日内策略" "${INTRADAY[@]}"
+
+wait  # 等待所有日内策略完成
+echo "日内策略 完成"
+echo ""
+
+# ============================================================================
+# 2. 趋势跟踪策略 (16个 - 所有时间框架)
+# ============================================================================
+
 TREND=(
     "sma_cross" "sma_5_20" "sma_10_30" "sma_20_60"
     "triple_ma" "triple_ma_5_20_50" "triple_ma_10_30_60" "triple_ma_8_21_55" "triple_ma_12_26_52"
@@ -94,23 +81,58 @@ TREND=(
     "macd_trend"
 )
 
+run_strategies_all_timeframes "趋势跟踪策略" "${TREND[@]}"
+
+wait  # 等待所有趋势策略完成
+echo "趋势跟踪策略 完成"
+echo ""
+
+# ============================================================================
+# 3. 均值回归策略 (14个 - 所有时间框架)
+# ============================================================================
+
 MEANREV=(
     "rsi_reversal"
     "boll_mr" "boll_mr_20_2" "boll_mr_20_2_5" "boll_mr_20_1_5" "boll_mr_30_2" "boll_mr_10_2" "boll_mr_strict"
     "cci_channel" "cci_20_100" "cci_20_150" "cci_20_80" "cci_14_100" "cci_30_100" "cci_strict"
 )
 
+run_strategies_all_timeframes "均值回归策略" "${MEANREV[@]}"
+
+wait  # 等待所有均值回归策略完成
+echo "均值回归策略 完成"
+echo ""
+
+# ============================================================================
+# 4. 突破策略 (46个 - 所有时间框架)
+# ============================================================================
+
 BREAKOUT=(
+    # Donchian系列 (11个)
     "donchian_channel" "donchian_20_10" "donchian_55_20" "donchian_20_20" "donchian_10_5" "donchian_5_3"
     "donchian_40_15" "donchian_turtle_sys1" "donchian_turtle_sys2" "donchian_aggressive" "donchian_conservative"
+    # Keltner系列 (8个)
     "keltner_channel" "keltner_20_10_1_5" "keltner_20_10_2_0" "keltner_20_10_1_0" "keltner_20_14_1_5"
     "keltner_30_10_1_5" "keltner_10_10_1_5" "keltner_tight"
+    # ATR系列 (9个)
     "atr_breakout" "atr_breakout_20_14_2" "atr_breakout_20_14_3" "atr_breakout_20_14_1_5" "atr_breakout_20_10_2"
     "atr_breakout_50_14_2" "atr_breakout_10_14_2" "atr_breakout_aggressive" "atr_breakout_conservative"
+    # VolBreakout系列 (9个)
     "vol_breakout" "vol_breakout_14_2" "vol_breakout_14_2_5" "vol_breakout_14_1_5" "vol_breakout_20_2"
     "vol_breakout_10_2" "vol_breakout_10_3" "vol_breakout_aggressive" "vol_breakout_conservative"
+    # NewHighLow系列 (9个)
     "new_hl" "new_hl_20" "new_hl_50" "new_hl_100" "new_hl_250" "new_hl_10" "new_hl_5" "new_hl_aggressive" "new_hl_conservative"
 )
+
+run_strategies_all_timeframes "突破策略" "${BREAKOUT[@]}"
+
+wait  # 等待所有突破策略完成
+echo "突破策略 完成"
+echo ""
+
+# ============================================================================
+# 5. 波动率策略 (18个 - 所有时间框架)
+# ============================================================================
 
 VOLATILITY=(
     "const_vol" "const_vol_10" "const_vol_15" "const_vol_20" "const_vol_conservative" "const_vol_aggressive"
@@ -118,73 +140,44 @@ VOLATILITY=(
     "vol_regime" "vol_regime_standard" "vol_regime_sensitive" "vol_regime_conservative" "vol_regime_short" "vol_regime_long"
 )
 
+run_strategies_all_timeframes "波动率策略" "${VOLATILITY[@]}"
+
+wait  # 等待所有波动率策略完成
+echo "波动率策略 完成"
+echo ""
+
+# ============================================================================
+# 6. 经典系统 (7个 - 所有时间框架)
+# ============================================================================
+
 CLASSIC=(
     "turtle" "turtle_sys1" "turtle_sys1_conservative" "turtle_sys1_aggressive" "turtle_sys2" "turtle_es" "turtle_mnq"
 )
 
-# 组合所有策略
-ALL_STRATEGIES=("${INTRADAY[@]}" "${TREND[@]}" "${MEANREV[@]}" "${BREAKOUT[@]}" "${VOLATILITY[@]}" "${CLASSIC[@]}")
+run_strategies_all_timeframes "经典系统" "${CLASSIC[@]}"
 
-# ============================================================================
-# 主回测循环
-# ============================================================================
-
-# 生成所有滚动窗口
-WINDOWS=$(generate_rolling_windows "$WINDOW_START_DATE" "$WINDOW_END_DATE" "$WINDOW_MONTHS" "$ROLLING_MONTHS")
-WINDOW_COUNT=$(echo "$WINDOWS" | wc -l)
-
-echo "生成的滚动窗口数量: $WINDOW_COUNT 个"
+wait  # 等待所有经典策略完成
+echo "经典系统 完成"
 echo ""
-
-WINDOW_INDEX=0
-
-# 对每个滚动窗口执行回测
-while IFS=' ' read -r WINDOW_START WINDOW_END; do
-    WINDOW_INDEX=$((WINDOW_INDEX + 1))
-    echo "=========================================="
-    echo "处理窗口 $WINDOW_INDEX/$WINDOW_COUNT: $WINDOW_START 至 $WINDOW_END"
-    echo "=========================================="
-
-    # 对每个时间框架
-    for timeframe in "${TIMEFRAMES[@]}"; do
-        echo "  时间框架: $timeframe"
-
-        # 对每个策略
-        for strategy in "${ALL_STRATEGIES[@]}"; do
-            run_with_limit "$timeframe" "$strategy" "$WINDOW_START" "$WINDOW_END"
-        done
-    done
-
-    echo "窗口 $WINDOW_INDEX 的所有任务已提交，等待完成..."
-    wait  # 等待当前窗口的所有任务完成
-    echo ""
-
-done <<< "$WINDOWS"
 
 # ============================================================================
 echo "================================================================"
 echo "所有策略回测完成!"
 echo "================================================================"
 echo ""
-echo "回测统计信息:"
-echo "  策略类型数量:"
-echo "    - 日内策略: ${#INTRADAY[@]} 个"
-echo "    - 趋势策略: ${#TREND[@]} 个"
-echo "    - 均值回归: ${#MEANREV[@]} 个"
-echo "    - 突破策略: ${#BREAKOUT[@]} 个"
-echo "    - 波动率策略: ${#VOLATILITY[@]} 个"
-echo "    - 经典系统: ${#CLASSIC[@]} 个"
-echo "    ─────────────────"
-echo "    总策略数: ${#ALL_STRATEGIES[@]} 个"
+echo "统计信息 (多时间框架版本):"
+echo "  - 日内策略: ${#INTRADAY[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 趋势策略: ${#TREND[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 均值回归: ${#MEANREV[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 突破策略: ${#BREAKOUT[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 波动率策略: ${#VOLATILITY[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 经典系统: ${#CLASSIC[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
 echo ""
-echo "  时间框架数: ${#TIMEFRAMES[@]} 个"
-echo "  滚动窗口数: $WINDOW_COUNT 个"
+TOTAL_TESTS=$((${#INTRADAY[@]} + ${#TREND[@]} + ${#MEANREV[@]} + ${#BREAKOUT[@]} + ${#VOLATILITY[@]} + ${#CLASSIC[@]}))
+TOTAL_WITH_TIMEFRAMES=$((TOTAL_TESTS * ${#TIMEFRAMES[@]}))
+echo "  总计: $TOTAL_TESTS 个策略 × ${#TIMEFRAMES[@]} 个时间框架 = $TOTAL_WITH_TIMEFRAMES 次回测"
 echo ""
-TOTAL_BACKTESTS=$((${#ALL_STRATEGIES[@]} * ${#TIMEFRAMES[@]} * $WINDOW_COUNT))
-echo "  总回测次数: ${#ALL_STRATEGIES[@]} 策略 × ${#TIMEFRAMES[@]} 时间框架 × $WINDOW_COUNT 窗口 = $TOTAL_BACKTESTS 次"
-echo ""
-echo "结果文件位置:"
-echo "  backtest_results/ 目录下的各类文件:"
-echo "    - daily_values_*.csv - 每日投资组合价值"
-echo "    - trades_*.csv - 交易记录"
-echo ""
+echo "接下来可运行滚动验证（按timeframe分别运行）:"
+for tf in "${TIMEFRAMES[@]}"; do
+    echo "  python rolling_portfolio_validator.py --timeframe $tf --window-months 12 --step-months 12 --workers auto"
+done
