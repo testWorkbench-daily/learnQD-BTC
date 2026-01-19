@@ -18,11 +18,7 @@ class StrategyAtom(ABC):
     
     name: str = "unnamed"
     params: Dict[str, Any] = {}
-
-    # Timeframe compatibility metadata
-    compatible_timeframes: Optional[List[str]] = None  # None = all compatible
-    requires_intraday_data: bool = False  # True = needs m1/m5/m15/m30
-
+    
     @abstractmethod
     def strategy_cls(self) -> Type[bt.Strategy]:
         """返回策略类"""

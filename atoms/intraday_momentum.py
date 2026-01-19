@@ -38,8 +38,6 @@ class IntradayMomentumAtom(StrategyAtom):
     """
     
     name = "intraday_momentum"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 0.5, 'risk_pct': 0.1}
     
     def strategy_cls(self):
@@ -147,62 +145,46 @@ class IntradayMomentumAtom(StrategyAtom):
 class IntradayMomentum_0_5(IntradayMomentumAtom):
     """日内动量策略：0.5%阈值（标准）"""
     name = "intraday_mom_0_5"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 0.5, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_1_0(IntradayMomentumAtom):
     """日内动量策略：1.0%阈值（中等）"""
     name = "intraday_mom_1_0"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 1.0, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_1_5(IntradayMomentumAtom):
     """日内动量策略：1.5%阈值（较高）"""
     name = "intraday_mom_1_5"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 1.5, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_2_0(IntradayMomentumAtom):
     """日内动量策略：2.0%阈值（高）"""
     name = "intraday_mom_2_0"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 2.0, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_0_3(IntradayMomentumAtom):
     """日内动量策略：0.3%阈值（敏感）"""
     name = "intraday_mom_0_3"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 0.3, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_Aggressive(IntradayMomentumAtom):
     """激进日内动量：0.3%阈值"""
     name = "intraday_mom_aggressive"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 0.3, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_Conservative(IntradayMomentumAtom):
     """保守日内动量：2.0%阈值"""
     name = "intraday_mom_conservative"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 2.0, 'risk_pct': 0.1}
 
 
 class IntradayMomentum_Moderate(IntradayMomentumAtom):
     """适度日内动量：1.0%阈值"""
     name = "intraday_mom_moderate"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'momentum_threshold': 1.0, 'risk_pct': 0.1}

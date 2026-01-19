@@ -62,33 +62,12 @@ while current < end:
 PYTHON_EOF
 }
 
-# 检测是否为日内策略（仅支持分钟级周期）
-is_intraday_strategy() {
-    local strategy=$1
-    case "$strategy" in
-        orb*|intraday_*|vwap_*)
-            return 0  # true - 是日内策略
-            ;;
-        *)
-            return 1  # false - 不是日内策略
-            ;;
-    esac
-}
-
 # 并发控制函数
 run_with_limit() {
     local timeframe=$1
     local strategy=$2
     local window_start=$3
     local window_end=$4
-
-    # 跳过不兼容的策略-时间周期组合
-    if is_intraday_strategy "$strategy"; then
-        if [[ "$timeframe" == "h4" || "$timeframe" == "d1" ]]; then
-            echo "  [跳过] $strategy 不支持 $timeframe (仅支持分钟级: m1/m5/m15/m30)"
-            return
-        fi
-    fi
 
     # 等待直到有可用的并发槽位
     while [ $(jobs -r | wc -l) -ge $PARALLEL_JOBS ]; do

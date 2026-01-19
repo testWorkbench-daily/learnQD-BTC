@@ -36,8 +36,6 @@ class OpeningRangeBreakoutAtom(StrategyAtom):
     """
     
     name = "opening_range_breakout"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 30, 'close_eod': True, 'risk_pct': 0.1}
     
     def strategy_cls(self):
@@ -187,54 +185,40 @@ class OpeningRangeBreakoutAtom(StrategyAtom):
 class ORB_15min(OpeningRangeBreakoutAtom):
     """15分钟开盘区间突破（适合1分钟数据）"""
     name = "orb_15min"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 15, 'close_eod': True, 'risk_pct': 0.1}
 
 
 class ORB_30min(OpeningRangeBreakoutAtom):
     """30分钟开盘区间突破（适合1分钟数据）"""
     name = "orb_30min"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 30, 'close_eod': True, 'risk_pct': 0.1}
 
 
 class ORB_60min(OpeningRangeBreakoutAtom):
     """60分钟开盘区间突破（适合1分钟数据）"""
     name = "orb_60min"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 60, 'close_eod': True, 'risk_pct': 0.1}
 
 
 class ORB_30min_NoClose(OpeningRangeBreakoutAtom):
     """30分钟开盘区间突破，不强制收盘平仓"""
     name = "orb_30min_no_close"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 30, 'close_eod': False, 'risk_pct': 0.1}
 
 
 class ORB_45min(OpeningRangeBreakoutAtom):
     """45分钟开盘区间突破"""
     name = "orb_45min"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 45, 'close_eod': True, 'risk_pct': 0.1}
 
 
 class ORB_Aggressive(OpeningRangeBreakoutAtom):
     """激进ORB：15分钟区间"""
     name = "orb_aggressive"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 15, 'close_eod': True, 'risk_pct': 0.1}
 
 
 class ORB_Conservative(OpeningRangeBreakoutAtom):
     """保守ORB：60分钟区间"""
     name = "orb_conservative"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {'range_bars': 60, 'close_eod': True, 'risk_pct': 0.1}

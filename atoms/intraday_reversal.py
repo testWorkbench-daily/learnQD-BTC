@@ -38,8 +38,6 @@ class IntradayReversalAtom(StrategyAtom):
     """
 
     name = "intraday_reversal"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {
         'reversal_threshold': 1.5,  # 反转阈值（%）
         'use_atr_filter': False,    # 是否启用 ATR 趋势过滤
@@ -177,8 +175,6 @@ class IntradayReversalAtom(StrategyAtom):
 class IntradayReversal_1_5(IntradayReversalAtom):
     """日内反转策略：1.5% 阈值（标准，默认不启用 ATR 过滤）"""
     name = "intraday_rev_1_5"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {
         'reversal_threshold': 1.5,
         'use_atr_filter': False,
@@ -191,8 +187,6 @@ class IntradayReversal_1_5(IntradayReversalAtom):
 class IntradayReversal_1_0(IntradayReversalAtom):
     """日内反转策略：1.0% 阈值（更敏感）"""
     name = "intraday_rev_1_0"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {
         'reversal_threshold': 1.0,
         'use_atr_filter': False,
@@ -205,8 +199,6 @@ class IntradayReversal_1_0(IntradayReversalAtom):
 class IntradayReversal_2_0(IntradayReversalAtom):
     """日内反转策略：2.0% 阈值（更严格，仅极端涨跌才交易）"""
     name = "intraday_rev_2_0"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {
         'reversal_threshold': 2.0,
         'use_atr_filter': False,
@@ -219,8 +211,6 @@ class IntradayReversal_2_0(IntradayReversalAtom):
 class IntradayReversal_Aggressive(IntradayReversalAtom):
     """激进日内反转：1.0% 阈值"""
     name = "intraday_rev_aggressive"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {
         'reversal_threshold': 1.0,
         'use_atr_filter': False,
@@ -233,8 +223,6 @@ class IntradayReversal_Aggressive(IntradayReversalAtom):
 class IntradayReversal_Conservative(IntradayReversalAtom):
     """保守日内反转：1.5% 阈值 + ATR 趋势过滤"""
     name = "intraday_rev_conservative"
-    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
-    requires_intraday_data = True
     params = {
         'reversal_threshold': 1.5,
         'use_atr_filter': True,     # 启用 ATR 过滤，趋势日不做反转
