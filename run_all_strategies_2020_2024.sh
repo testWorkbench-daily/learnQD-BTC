@@ -8,11 +8,13 @@
 # ============================================================================
 START="2017-01-01"
 END="2025-12-31"
-PARALLEL_JOBS=7  # 并发执行数量
+PARALLEL_JOBS=4  # 并发执行数量
+TIMEFRAMES=("m1" "m5" "m15" "h1" "h4" "d1")  # 所有时间框架
 
 echo "================================================================"
-echo "批量运行策略回测（完整历史周期）"
+echo "批量运行策略回测（完整历史周期 - 多时间框架）"
 echo "时间范围: $START 至 $END"
+echo "时间框架: ${TIMEFRAMES[@]}"
 echo "并发数量: $PARALLEL_JOBS"
 echo "================================================================"
 echo ""
@@ -34,12 +36,27 @@ run_with_limit() {
     python bt_main.py --start $START --end $END --timeframe $timeframe --atom $strategy --no-plot &
 }
 
-# ============================================================================
-# 1. 日内策略 - m5 (27个)
-# ============================================================================
-echo ">>> 1. 日内策略 (m5 timeframe)"
+# 为一个策略列表运行所有时间框架
+run_strategies_all_timeframes() {
+    local category_name=$1
+    shift
+    local strategies=("$@")
 
-INTRADAY_M5=(
+    echo ">>> 运行 $category_name (所有时间框架: ${TIMEFRAMES[@]})"
+
+    for timeframe in "${TIMEFRAMES[@]}"; do
+        echo "  → 时间框架: $timeframe"
+        for strategy in "${strategies[@]}"; do
+            run_with_limit "$timeframe" "$strategy"
+        done
+    done
+}
+
+# ============================================================================
+# 1. 日内策略 (30个 - 所有时间框架)
+# ============================================================================
+
+INTRADAY=(
     "orb" "orb_15min" "orb_30min" "orb_60min" "orb_30min_no_close" "orb_45min" "orb_aggressive" "orb_conservative"
     "intraday_mom" "intraday_mom_0_5" "intraday_mom_1_0" "intraday_mom_1_5" "intraday_mom_2_0" "intraday_mom_0_3"
     "intraday_mom_aggressive" "intraday_mom_conservative" "intraday_mom_moderate"
@@ -47,60 +64,51 @@ INTRADAY_M5=(
     "vwap_reversion" "vwap_rev_1_0" "vwap_rev_1_5" "vwap_rev_2_0" "vwap_rev_aggressive" "vwap_rev_conservative"
 )
 
-for strategy in "${INTRADAY_M5[@]}"; do
-    run_with_limit "m5" "$strategy"
-done
+run_strategies_all_timeframes "日内策略" "${INTRADAY[@]}"
 
 wait  # 等待所有日内策略完成
-echo "日内策略 (m5) 完成"
+echo "日内策略 完成"
 echo ""
 
 # ============================================================================
-# 2. 趋势跟踪策略 - h1 (16个)
+# 2. 趋势跟踪策略 (16个 - 所有时间框架)
 # ============================================================================
-echo ">>> 2. 趋势跟踪策略 (h1 timeframe)"
 
-TREND_H1=(
+TREND=(
     "sma_cross" "sma_5_20" "sma_10_30" "sma_20_60"
     "triple_ma" "triple_ma_5_20_50" "triple_ma_10_30_60" "triple_ma_8_21_55" "triple_ma_12_26_52"
     "adx_trend" "adx_14_25" "adx_14_30" "adx_14_20" "adx_21_25" "adx_10_25"
     "macd_trend"
 )
 
-for strategy in "${TREND_H1[@]}"; do
-    run_with_limit "h1" "$strategy"
-done
+run_strategies_all_timeframes "趋势跟踪策略" "${TREND[@]}"
 
 wait  # 等待所有趋势策略完成
-echo "趋势跟踪策略 (h1) 完成"
+echo "趋势跟踪策略 完成"
 echo ""
 
 # ============================================================================
-# 3. 均值回归策略 - h1 (13个)
+# 3. 均值回归策略 (14个 - 所有时间框架)
 # ============================================================================
-echo ">>> 3. 均值回归策略 (h1 timeframe)"
 
-MEANREV_H1=(
+MEANREV=(
     "rsi_reversal"
     "boll_mr" "boll_mr_20_2" "boll_mr_20_2_5" "boll_mr_20_1_5" "boll_mr_30_2" "boll_mr_10_2" "boll_mr_strict"
     "cci_channel" "cci_20_100" "cci_20_150" "cci_20_80" "cci_14_100" "cci_30_100" "cci_strict"
 )
 
-for strategy in "${MEANREV_H1[@]}"; do
-    run_with_limit "h1" "$strategy"
-done
+run_strategies_all_timeframes "均值回归策略" "${MEANREV[@]}"
 
 wait  # 等待所有均值回归策略完成
-echo "均值回归策略 (h1) 完成"
+echo "均值回归策略 完成"
 echo ""
 
 # ============================================================================
-# 4. 突破策略 - d1 (46个)
+# 4. 突破策略 (46个 - 所有时间框架)
 # ============================================================================
-echo ">>> 4. 突破策略 (d1 timeframe)"
 
-BREAKOUT_D1=(
-    # Donchian系列 (10个)
+BREAKOUT=(
+    # Donchian系列 (11个)
     "donchian_channel" "donchian_20_10" "donchian_55_20" "donchian_20_20" "donchian_10_5" "donchian_5_3"
     "donchian_40_15" "donchian_turtle_sys1" "donchian_turtle_sys2" "donchian_aggressive" "donchian_conservative"
     # Keltner系列 (8个)
@@ -109,57 +117,47 @@ BREAKOUT_D1=(
     # ATR系列 (9个)
     "atr_breakout" "atr_breakout_20_14_2" "atr_breakout_20_14_3" "atr_breakout_20_14_1_5" "atr_breakout_20_10_2"
     "atr_breakout_50_14_2" "atr_breakout_10_14_2" "atr_breakout_aggressive" "atr_breakout_conservative"
-    # VolBreakout系列 (8个)
+    # VolBreakout系列 (9个)
     "vol_breakout" "vol_breakout_14_2" "vol_breakout_14_2_5" "vol_breakout_14_1_5" "vol_breakout_20_2"
     "vol_breakout_10_2" "vol_breakout_10_3" "vol_breakout_aggressive" "vol_breakout_conservative"
     # NewHighLow系列 (9个)
     "new_hl" "new_hl_20" "new_hl_50" "new_hl_100" "new_hl_250" "new_hl_10" "new_hl_5" "new_hl_aggressive" "new_hl_conservative"
-    # Bollinger突破 (1个)
-    "boll_breakout"
 )
 
-for strategy in "${BREAKOUT_D1[@]}"; do
-    run_with_limit "d1" "$strategy"
-done
+run_strategies_all_timeframes "突破策略" "${BREAKOUT[@]}"
 
 wait  # 等待所有突破策略完成
-echo "突破策略 (d1) 完成"
+echo "突破策略 完成"
 echo ""
 
 # ============================================================================
-# 5. 波动率策略 - d1 (15个)
+# 5. 波动率策略 (18个 - 所有时间框架)
 # ============================================================================
-echo ">>> 5. 波动率策略 (d1 timeframe)"
 
-VOLATILITY_D1=(
+VOLATILITY=(
     "const_vol" "const_vol_10" "const_vol_15" "const_vol_20" "const_vol_conservative" "const_vol_aggressive"
     "vol_expansion" "vol_expansion_standard" "vol_expansion_sensitive" "vol_expansion_conservative" "vol_expansion_short" "vol_expansion_long"
     "vol_regime" "vol_regime_standard" "vol_regime_sensitive" "vol_regime_conservative" "vol_regime_short" "vol_regime_long"
 )
 
-for strategy in "${VOLATILITY_D1[@]}"; do
-    run_with_limit "d1" "$strategy"
-done
+run_strategies_all_timeframes "波动率策略" "${VOLATILITY[@]}"
 
 wait  # 等待所有波动率策略完成
-echo "波动率策略 (d1) 完成"
+echo "波动率策略 完成"
 echo ""
 
 # ============================================================================
-# 6. 经典系统 - d1 (6个)
+# 6. 经典系统 (7个 - 所有时间框架)
 # ============================================================================
-echo ">>> 6. 经典系统 (d1 timeframe)"
 
-CLASSIC_D1=(
+CLASSIC=(
     "turtle" "turtle_sys1" "turtle_sys1_conservative" "turtle_sys1_aggressive" "turtle_sys2" "turtle_es" "turtle_mnq"
 )
 
-for strategy in "${CLASSIC_D1[@]}"; do
-    run_with_limit "d1" "$strategy"
-done
+run_strategies_all_timeframes "经典系统" "${CLASSIC[@]}"
 
 wait  # 等待所有经典策略完成
-echo "经典系统 (d1) 完成"
+echo "经典系统 完成"
 echo ""
 
 # ============================================================================
@@ -167,15 +165,19 @@ echo "================================================================"
 echo "所有策略回测完成!"
 echo "================================================================"
 echo ""
-echo "统计信息:"
-echo "  - 日内策略 (m5): ${#INTRADAY_M5[@]} 个"
-echo "  - 趋势策略 (h1): ${#TREND_H1[@]} 个"
-echo "  - 均值回归 (h1): ${#MEANREV_H1[@]} 个"
-echo "  - 突破策略 (d1): ${#BREAKOUT_D1[@]} 个"
-echo "  - 波动率策略 (d1): ${#VOLATILITY_D1[@]} 个"
-echo "  - 经典系统 (d1): ${#CLASSIC_D1[@]} 个"
+echo "统计信息 (多时间框架版本):"
+echo "  - 日内策略: ${#INTRADAY[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 趋势策略: ${#TREND[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 均值回归: ${#MEANREV[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 突破策略: ${#BREAKOUT[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 波动率策略: ${#VOLATILITY[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
+echo "  - 经典系统: ${#CLASSIC[@]} 个 × ${#TIMEFRAMES[@]} 个时间框架"
 echo ""
-echo "接下来运行滚动验证（按timeframe分别运行）:"
-echo "  python rolling_portfolio_validator.py --timeframe m5 --window-months 12 --step-months 12 --workers auto"
-echo "  python rolling_portfolio_validator.py --timeframe h1 --window-months 12 --step-months 12 --workers auto"
-echo "  python rolling_portfolio_validator.py --timeframe d1 --window-months 12 --step-months 12 --workers auto"
+TOTAL_TESTS=$((${#INTRADAY[@]} + ${#TREND[@]} + ${#MEANREV[@]} + ${#BREAKOUT[@]} + ${#VOLATILITY[@]} + ${#CLASSIC[@]}))
+TOTAL_WITH_TIMEFRAMES=$((TOTAL_TESTS * ${#TIMEFRAMES[@]}))
+echo "  总计: $TOTAL_TESTS 个策略 × ${#TIMEFRAMES[@]} 个时间框架 = $TOTAL_WITH_TIMEFRAMES 次回测"
+echo ""
+echo "接下来可运行滚动验证（按timeframe分别运行）:"
+for tf in "${TIMEFRAMES[@]}"; do
+    echo "  python rolling_portfolio_validator.py --timeframe $tf --window-months 12 --step-months 12 --workers auto"
+done
