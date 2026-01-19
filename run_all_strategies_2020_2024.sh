@@ -28,38 +28,35 @@ echo ""
 # 创建结果目录
 mkdir -p backtest_results
 
-# 生成所有滚动窗口的日期对（使用Python处理日期以确保跨平台兼容）
+# 生成所有滚动窗口的日期对
 generate_rolling_windows() {
     local start_date=$1
     local end_date=$2
     local window_months=$3
     local rolling_months=$4
 
-    python3 - "$start_date" "$end_date" "$window_months" "$rolling_months" << 'PYTHON_EOF'
-import sys
-from datetime import datetime
+    # 转换为时间戳便于计算
+    local current_date=$(date -j -f "%Y-%m-%d" "$start_date" "+%s" 2>/dev/null || date -d "$start_date" "+%s")
+    local max_date=$(date -j -f "%Y-%m-%d" "$end_date" "+%s" 2>/dev/null || date -d "$end_date" "+%s")
 
-def add_months(date, months):
-    month = date.month - 1 + months
-    year = date.year + month // 12
-    month = month % 12 + 1
-    day = min(date.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
-    return datetime(year, month, day)
+    while [ $current_date -lt $max_date ]; do
+        # 计算窗口结束日期
+        local window_end_ts=$(date -j -v +${window_months}m -f "%s" "$current_date" "+%s" 2>/dev/null || date -d "$current_date +${window_months} months" "+%s")
 
-start = datetime.strptime(sys.argv[1], "%Y-%m-%d")
-end = datetime.strptime(sys.argv[2], "%Y-%m-%d")
-window_months = int(sys.argv[3])
-rolling_months = int(sys.argv[4])
+        # 如果窗口结束超过最大日期，调整为最大日期
+        if [ $window_end_ts -gt $max_date ]; then
+            window_end_ts=$max_date
+        fi
 
-current = start
-while current < end:
-    window_end = add_months(current, window_months)
-    if window_end > end:
-        window_end = end
+        # 转换回日期格式
+        local start_fmt=$(date -j -f "%s" "$current_date" "+%Y-%m-%d" 2>/dev/null || date -d "@$current_date" "+%Y-%m-%d")
+        local end_fmt=$(date -j -f "%s" "$window_end_ts" "+%Y-%m-%d" 2>/dev/null || date -d "@$window_end_ts" "+%Y-%m-%d")
 
-    print(f"{current.strftime('%Y-%m-%d')} {window_end.strftime('%Y-%m-%d')}")
-    current = add_months(current, rolling_months)
-PYTHON_EOF
+        echo "$start_fmt $end_fmt"
+
+        # 移动到下一个窗口
+        current_date=$(date -j -v +${rolling_months}m -f "%s" "$current_date" "+%s" 2>/dev/null || date -d "$current_date +${rolling_months} months" "+%s")
+    done
 }
 
 # 并发控制函数
