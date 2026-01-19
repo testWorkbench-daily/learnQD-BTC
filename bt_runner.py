@@ -45,10 +45,9 @@ class Runner:
         'd1': (bt.TimeFrame.Weeks, 1),        # 日线 -> 按周统计收益
     }
     
-    # 基础分析器（不包含SharpeRatio，由run()动态添加）
+    # 基础分析器（不包含SharpeRatio和Returns，由run()动态添加以配置正确的timeframe）
     BASE_ANALYZERS = [
         (bt.analyzers.DrawDown, {}),
-        (bt.analyzers.Returns, {}),
         (bt.analyzers.TradeAnalyzer, {}),
         (TradeRecorder, {}),
         (DailyValueRecorder, {}),
@@ -126,7 +125,7 @@ class Runner:
         for analyzer_cls, kwargs in self.BASE_ANALYZERS:
             cerebro.addanalyzer(analyzer_cls, **kwargs)
 
-        # 根据timeframe动态添加SharpeRatio分析器
+        # 根据timeframe动态添加SharpeRatio和Returns分析器
         sharpe_tf, sharpe_comp = self.SHARPE_TIMEFRAME_MAP[self.timeframe]
         cerebro.addanalyzer(
             bt.analyzers.SharpeRatio,
@@ -135,6 +134,13 @@ class Runner:
             timeframe=sharpe_tf,
             compression=sharpe_comp,
             _name='sharperatio'
+        )
+        # Returns分析器也需要配置timeframe，否则可能出现_tcount=0的除零错误
+        cerebro.addanalyzer(
+            bt.analyzers.Returns,
+            timeframe=sharpe_tf,
+            compression=sharpe_comp,
+            _name='returns'
         )
 
         # 从Atom获取策略（不传递params，由Atom内部处理）
@@ -161,7 +167,18 @@ class Runner:
 
         # 回测执行（最关键）
         backtest_start = time.perf_counter()
-        results = cerebro.run()
+        try:
+            results = cerebro.run()
+        except ZeroDivisionError as e:
+            # 分析器（如Returns）计算时可能因数据不足导致除零错误
+            print(f'\n[错误] 回测执行失败: 分析器计算时发生除零错误')
+            print(f'[原因] 可能是数据时间范围太短或时间周期不匹配')
+            print(f'[建议] 尝试使用更长的时间范围或更小的时间周期')
+            raise RuntimeError(
+                f"回测执行失败: {e}\n"
+                f"策略: {atom.name}, 时间周期: {self.timeframe}\n"
+                f"建议: 增加数据时间范围或使用更小的时间周期(如m5/m15)"
+            ) from e
         backtest_time = time.perf_counter() - backtest_start
         strat = results[0]
 
