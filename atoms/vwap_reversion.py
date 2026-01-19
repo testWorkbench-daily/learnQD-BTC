@@ -37,6 +37,8 @@ class VWAPReversionAtom(StrategyAtom):
     """
 
     name = "vwap_reversion"
+    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
+    requires_intraday_data = True
     params = {
         'dev_threshold': 1.5,     # 入场偏离阈值（标准差倍数）
         'stop_multiplier': 3.0,   # 止损偏离倍数（标准差倍数）
@@ -184,6 +186,8 @@ class VWAPReversionAtom(StrategyAtom):
 class VWAPReversion_1_0(VWAPReversionAtom):
     """VWAP回归：1.0 标准差阈值（更频繁交易）"""
     name = "vwap_rev_1_0"
+    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
+    requires_intraday_data = True
     params = {
         'dev_threshold': 1.0,
         'stop_multiplier': 3.0,
@@ -195,6 +199,8 @@ class VWAPReversion_1_0(VWAPReversionAtom):
 class VWAPReversion_1_5(VWAPReversionAtom):
     """VWAP回归：1.5 标准差阈值（标准）"""
     name = "vwap_rev_1_5"
+    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
+    requires_intraday_data = True
     params = {
         'dev_threshold': 1.5,
         'stop_multiplier': 3.0,
@@ -206,6 +212,8 @@ class VWAPReversion_1_5(VWAPReversionAtom):
 class VWAPReversion_2_0(VWAPReversionAtom):
     """VWAP回归：2.0 标准差阈值（更严格，仅极端偏离才入场）"""
     name = "vwap_rev_2_0"
+    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
+    requires_intraday_data = True
     params = {
         'dev_threshold': 2.0,
         'stop_multiplier': 3.0,
@@ -217,6 +225,8 @@ class VWAPReversion_2_0(VWAPReversionAtom):
 class VWAPReversion_Aggressive(VWAPReversionAtom):
     """激进 VWAP 回归：1.0 标准差阈值"""
     name = "vwap_rev_aggressive"
+    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
+    requires_intraday_data = True
     params = {
         'dev_threshold': 1.0,
         'stop_multiplier': 2.5,
@@ -228,6 +238,8 @@ class VWAPReversion_Aggressive(VWAPReversionAtom):
 class VWAPReversion_Conservative(VWAPReversionAtom):
     """保守 VWAP 回归：1.5 标准差阈值 + 更宽止损"""
     name = "vwap_rev_conservative"
+    compatible_timeframes = ['m1', 'm5', 'm15', 'm30']
+    requires_intraday_data = True
     params = {
         'dev_threshold': 1.5,
         'stop_multiplier': 3.5,

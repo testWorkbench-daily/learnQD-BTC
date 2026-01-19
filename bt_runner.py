@@ -73,7 +73,25 @@ class Runner:
         # 验证timeframe
         if self.timeframe not in self.TIMEFRAME_MAP:
             raise ValueError(f"不支持的周期: {timeframe}, 可选: {list(self.TIMEFRAME_MAP.keys())}")
-    
+
+    def _validate_compatibility(self, atom: StrategyAtom):
+        """验证策略与时间周期的兼容性"""
+        if atom.compatible_timeframes is not None:
+            if self.timeframe not in atom.compatible_timeframes:
+                raise ValueError(
+                    f"策略 '{atom.name}' 不兼容时间周期 '{self.timeframe}'。\n"
+                    f"该策略仅支持: {', '.join(atom.compatible_timeframes)}\n"
+                    f"原因: 该策略使用日内时间逻辑(如9:30-14:55)，需要分钟级数据。"
+                )
+
+        if atom.requires_intraday_data:
+            intraday_timeframes = ['m1', 'm5', 'm15', 'm30']
+            if self.timeframe not in intraday_timeframes:
+                raise ValueError(
+                    f"策略 '{atom.name}' 需要日内数据(分钟级)，不支持 '{self.timeframe}' 周期。\n"
+                    f"请使用: {', '.join(intraday_timeframes)}"
+                )
+
     def run(self, atom: StrategyAtom, save_trades: bool = True, plot: bool = True) -> Dict[str, Any]:
         """
         运行回测
@@ -86,6 +104,9 @@ class Runner:
         Returns:
             包含回测结果的字典
         """
+        # 验证策略与时间周期的兼容性
+        self._validate_compatibility(atom)
+
         # 总计时开始
         total_start = time.perf_counter()
 
@@ -284,13 +305,23 @@ class Runner:
         final_value = cerebro.broker.getvalue()
         return_pct = (final_value / self.cash - 1) * 100
         
-        # 夏普比率
-        sharpe = strat.analyzers.sharperatio.get_analysis()
-        sharpe_ratio = sharpe.get('sharperatio')
-        
-        # 标记是否使用了原生计算
-        used_native_sharpe = (sharpe_ratio is not None and sharpe_ratio != 0)
-        
+        # 夏普比率 - 增强错误处理
+        try:
+            sharpe = strat.analyzers.sharperatio.get_analysis()
+            sharpe_ratio = sharpe.get('sharperatio')
+            used_native_sharpe = (sharpe_ratio is not None and sharpe_ratio != 0)
+        except ZeroDivisionError as e:
+            # 特定处理 _tcount=0 错误
+            print(f'  [警告: 夏普比率计算失败 - 未检测到周期边界]')
+            print(f'  [原因: 策略 "{atom.name}" 可能不兼容时间周期 "{self.timeframe}"]')
+            print(f'  [建议: 日内策略请使用 m1/m5/m15/m30 周期]')
+            sharpe_ratio = None
+            used_native_sharpe = False
+        except Exception as e:
+            print(f'  [夏普比率计算失败: {e}]')
+            sharpe_ratio = None
+            used_native_sharpe = False
+
         # 如果sharperatio为None，尝试手动计算
         if sharpe_ratio is None:
             try:
