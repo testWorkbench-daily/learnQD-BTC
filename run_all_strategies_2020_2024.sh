@@ -12,7 +12,7 @@ WINDOW_END_DATE="2025-12-31"
 WINDOW_MONTHS=6           # 6 个月的投资窗口
 ROLLING_MONTHS=1          # 每月滚动一次
 PARALLEL_JOBS=4           # 并发执行数量
-TIMEFRAMES=("d1")  # 所有时间框架
+TIMEFRAMES=("h4" "d1")  # 所有时间框架
 
 echo "================================================================"
 echo "滚动窗口回测 - 所有策略和时间框架"
