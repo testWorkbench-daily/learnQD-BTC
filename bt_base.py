@@ -2,8 +2,60 @@
 策略原子基类和基础组件
 """
 import backtrader as bt
+import math
 from abc import ABC, abstractmethod
 from typing import Type, Optional, Dict, Any, List
+
+
+# =============================================================================
+# 安全的Returns分析器 - 修复backtrader的_tcount=0除零bug
+# =============================================================================
+class SafeReturns(bt.analyzers.Returns):
+    """
+    修复backtrader原生Returns分析器的ZeroDivisionError问题
+
+    当回测时间窗口内没有跨越任何周期边界时（_tcount=0），
+    原版会抛出除零错误，此版本会安全处理并返回合理的默认值
+    """
+
+    def stop(self):
+        # 获取最终账户价值
+        if not self._fundmode:
+            self._value_end = self.strategy.broker.getvalue()
+        else:
+            self._value_end = self.strategy.broker.fundvalue
+
+        # 计算总收益率（对数收益）
+        try:
+            nlrtot = self._value_end / self._value_start
+        except ZeroDivisionError:
+            rtot = float('-inf')
+        else:
+            if nlrtot < 0.0:
+                rtot = float('-inf')
+            else:
+                rtot = math.log(nlrtot)
+
+        self.rets['rtot'] = rtot
+
+        # 平均收益率 - 修复点：检查_tcount是否为0
+        if self._tcount > 0:
+            self.rets['ravg'] = ravg = rtot / self._tcount
+        else:
+            # 当没有跨越周期边界时，使用rtot作为ravg（或设为0）
+            self.rets['ravg'] = ravg = rtot if rtot > float('-inf') else 0.0
+
+        # 年化收益率
+        tann = self.p.tann or self._TANN.get(self.timeframe, None)
+        if tann is None:
+            tann = self._TANN.get(self.data._timeframe, 1.0)
+
+        if ravg > float('-inf'):
+            self.rets['rnorm'] = rnorm = math.expm1(ravg * tann)
+        else:
+            self.rets['rnorm'] = rnorm = ravg
+
+        self.rets['rnorm100'] = rnorm * 100.0
 
 
 class StrategyAtom(ABC):

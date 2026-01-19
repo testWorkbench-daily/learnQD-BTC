@@ -7,7 +7,7 @@ import os
 import pandas as pd
 import time
 from typing import Optional, Dict, Any, List
-from bt_base import StrategyAtom, TradeRecorder, DailyValueRecorder
+from bt_base import StrategyAtom, TradeRecorder, DailyValueRecorder, SafeReturns
 
 
 class Runner:
@@ -48,7 +48,7 @@ class Runner:
     # 基础分析器（不包含SharpeRatio，由run()动态添加）
     BASE_ANALYZERS = [
         (bt.analyzers.DrawDown, {}),
-        (bt.analyzers.Returns, {}),
+        (SafeReturns, {}),  # 使用SafeReturns修复_tcount=0的除零错误
         (bt.analyzers.TradeAnalyzer, {}),
         (TradeRecorder, {}),
         (DailyValueRecorder, {}),
